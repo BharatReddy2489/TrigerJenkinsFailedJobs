@@ -20,7 +20,7 @@ public class Base extends Jenkins{
 	public String intialize(Properties prop) {
 		user = prop.getProperty("user").trim();
 		pwd = prop.getProperty("pwd").trim();
-		RestAssured.baseURI = "http://ipjenkin02.ip.devcerner.net:8080/";
+		RestAssured.baseURI = "";
 		String response = given().auth().preemptive().basic(user, pwd).when().get("crumbIssuer/api/json").then().extract().response().asString();
 		JsonPath jsonData = new JsonPath(response); 
 		String crumb = jsonData.getString("crumb");

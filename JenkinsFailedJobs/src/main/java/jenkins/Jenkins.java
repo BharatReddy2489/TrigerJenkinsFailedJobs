@@ -16,10 +16,12 @@ public class Jenkins {
 	public static List<String> ETFJobNames = new ArrayList<String>();
 	public static List<String> ETFJobNamesFinal = new ArrayList<String>();
 	public static String testResourcePath;
-	public static String solutionName=System.getProperty("Solution");
-	public static String domain=System.getProperty("DomainName");
-	//public static String solutionName="Scheduling";
-	//public static String domain="S18VA";	
+	//public static String solutionName=System.getProperty("Solution");
+	//public static String domain=System.getProperty("DomainName");
+	public static String user = "";
+	public static String pwd = "";
+	public static String solutionName="Scheduling";
+	public static String domain="S18VA";	
 	public static String testResult;
 	public static int lastBuildID;
 	public static String flag="";
@@ -165,6 +167,56 @@ public class Jenkins {
 			}
 	}
 	
+	public static List<String> getTOFJTemp(String user, String pwd, String crumb, String domain) {
+		String ETFJobName;
+		String ETFresponse = given().auth().preemptive().basic(user,pwd).header("Jenkins-Crumb",crumb)
+				  .when().get("job/"+solutionName+"/api/json?pretty=true").then().extract().response().asString();
+					JsonPath ETFJobNamesResponse = new JsonPath(ETFresponse);
+					for(int i=0;i<ETFJobNamesResponse.getInt("jobs.name.size()");i++) {
+						ETFJobName=ETFJobNamesResponse.get("jobs["+i+"].name");
+						if(ETFJobName.contains("RCS-EP-")) {
+							ETFJobNames.add(ETFJobName);
+						}
+						
+					}
+		return ETFJobNames;
+	}
+	
+	public static void triggerFailedJobstemp(String user, String pwd, String crumb, List<String> ETFJobNames) throws InterruptedException {
+		String ETFJobName;
+		List<String> jobNamesLocal = new ArrayList<String>();
+			for(int i=0;i<ETFJobNames.size();i++) {
+				flag="";
+				failedJobNames.clear();
+				jobNamesLocal.clear();
+				String responseOfJobList=given().auth().preemptive().basic(user,pwd).header("Jenkins-Crumb",crumb)
+					  .when().get("/job/"+solutionName+"/"+"view/Batches/job/"+ETFJobNames.get(i)+"/api/json?pretty=true").then().extract().response().asString();
+			  JsonPath jsonJobNames = new JsonPath(responseOfJobList);
+			  for(int j=0;j<jsonJobNames.getInt("downstreamProjects.name.size()");j++) {
+				  ETFJobName=jsonJobNames.get("downstreamProjects["+j+"].name");
+				  jobNamesLocal.add(ETFJobName);
+				}
+			  System.out.println("Total number associated jobs in specified resource path: "+jobNamesLocal.size());
+					  String responseOfTestStatus;
+					  for(int j=0;j<jobNamesLocal.size();j++) {
+						  try {
+						  responseOfTestStatus=given().auth().preemptive().basic(user,pwd).header("Jenkins-Crumb",crumb)
+								  .when().get("/job/"+solutionName+"/job/"+jobNamesLocal.get(j)+"/lastBuild/api/json").then().extract().response().asString();
+								  JsonPath jsonDataResult = new JsonPath(responseOfTestStatus);
+								  testResult = jsonDataResult.getString("result");
+								  if(!testResult.equals("SUCCESS")) {
+									  //given().auth().preemptive().basic(user,pwd).header("Jenkins-Crumb",crumb).queryParam("token", jobNames.get(i))
+									   //.when().put("job/"+solutionName+"/job/"+jobNamesLocal.get(j)+"/build").then().assertThat().statusCode(201);
+									    System.out.println(jobNamesLocal.get(j)+" is Triggered");
+								  	}
+						  }
+								  catch(Exception e) {
+									  }
+				  
+				  }
+					 
+			}
+	}
 	public static void main(String[] args) throws IOException, InterruptedException {
 		
 		/*
